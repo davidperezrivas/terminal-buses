@@ -1,8 +1,8 @@
 from rest_framework import routers
 
-from .viewsets import ChoferViewSet
+from .views import ChoferViews
 
 router = routers.SimpleRouter()
-router.register('choferes', ChoferViewSet)
+router.register('choferes', ChoferViews)
 
 urlpatterns = router.urls

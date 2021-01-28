@@ -36,7 +36,14 @@
 								<v-spacer></v-spacer>
 								<v-dialog v-model="dialog" persistent max-width="900px">
 									<template v-slot:activator="{ on, attrs }">
-										<v-btn color="green darken-4" outlined class="mb-2" v-bind="attrs" v-on="on">
+										<v-btn
+											color="green darken-4"
+											outlined
+											class="mb-2"
+											v-bind="attrs"
+											v-on="on"
+											@click="mostrarMensaje = false"
+										>
 											<v-icon>mdi-account-plus </v-icon>
 											Nuevo Chofer
 										</v-btn>
@@ -102,6 +109,13 @@
 																required
 															></v-text-field>
 														</v-col>
+														<v-col cols="12">
+															<v-checkbox
+																v-if="editedIndex >= 0"
+																v-model="objChofer.disponible"
+																label="¿Chofer Disponible?"
+															></v-checkbox>
+														</v-col>
 													</v-row>
 												</v-form>
 											</v-container>
@@ -138,9 +152,6 @@
 						<template v-slot:[`item.actions`]="{ item }">
 							<v-icon small class="mr-2" @click="editItem(item)">
 								mdi-pencil
-							</v-icon>
-							<v-icon small @click="deleteItem(item)">
-								mdi-delete
 							</v-icon>
 						</template>
 						<template v-slot:no-data>
@@ -203,6 +214,7 @@ export default {
 			{ text: 'Email', value: 'email' },
 			{ text: 'Direccion', value: 'direccion' },
 			{ text: 'Telefono', value: 'telefono' },
+			{ text: 'Disponible', value: 'habilitado' },
 			{ text: 'Actions', value: 'actions', sortable: false },
 		],
 		listadoChoferes: [],
@@ -220,6 +232,7 @@ export default {
 			email: '',
 			direccion: '',
 			telefono: '',
+			disponible: true,
 		},
 
 		defaultItem: {
@@ -229,6 +242,7 @@ export default {
 			email: '',
 			direccion: '',
 			telefono: '',
+			disponible: true,
 		},
 	}),
 
@@ -255,13 +269,20 @@ export default {
 		/* Funcion que me trae de la api todos los choferes */
 		async traeListadoChoferes() {
 			let choferes = await axios.get('http://localhost:8000/api/choferes/');
-			choferes.status == 200
-				? (this.listadoChoferes = choferes.data)
-				: this.muestraMensajeError(
-						'error',
-						'mdi-cloud-alert',
-						'Ha ocurrido un error al buscar el listado de los choferes'
-				  );
+			if (choferes.status == 200) {
+				choferes.data.forEach((chofer) => {
+					chofer.disponible ? (chofer.habilitado = 'Si') : (chofer.habilitado = 'No');
+				});
+
+				this.listadoChoferes = choferes.data;
+			} else {
+				this.muestraMensajeError(
+					'error',
+					'mdi-cloud-alert',
+					'Estimado Usuario, ha ocurrido un error al buscar el listado de elementos, favor intente más tarde',
+					'Error'
+				);
+			}
 		},
 
 		/* Funcion que cierra la ventana modal de las modificaciones / agregar */
@@ -276,7 +297,6 @@ export default {
 		},
 
 		async crearChofer() {
-			this.mostrarMensaje = false;
 			/* Funcion para almacenar un registro */
 			if (this.$refs.form.validate()) {
 				// Si el registro pasa validacion procederemos a revisar si el run se encuentra en los registros
@@ -316,7 +336,6 @@ export default {
 		},
 
 		async actualizarChofer() {
-			this.mostrarMensaje = false;
 			if (this.$refs.form.validate()) {
 				let actualizarRegisto = await axios.put(
 					`http://localhost:8000/api/choferes/${this.objChofer.id}/`,
@@ -342,6 +361,7 @@ export default {
 		},
 
 		editItem(item) {
+			this.mostrarMensaje = false;
 			this.editedIndex = this.listadoChoferes.indexOf(item);
 			this.objChofer = Object.assign({}, item);
 			this.dialog = true;

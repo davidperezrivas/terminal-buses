@@ -3,16 +3,25 @@
 		<v-row no-gutters>
 			<v-col cols="12" md="12">
 				<v-card>
-					<v-alert
-						v-if="mostrarMensaje"
-						dismissible
-						text
-						prominent
-						:type="tipo"
-						:icon="icono"
-						border="left"
-					>
-						{{ texto }}
+					<v-alert v-if="mostrarMensaje" text prominent :type="tipo" :icon="icono" border="left">
+						<h3 class="headline">
+							{{ cabecera }}
+						</h3>
+						<div>
+							{{ texto }}
+						</div>
+
+						<v-divider class="my-4" :class="tipo" style="opacity: 0.22"></v-divider>
+
+						<v-row align="center" no-gutters>
+							<v-col class="grow"> </v-col>
+							<v-spacer></v-spacer>
+							<v-col class="shrink">
+								<v-btn :color="tipo" outlined @click="mostrarMensaje = !mostrarMensaje">
+									Entiendo
+								</v-btn>
+							</v-col>
+						</v-row>
 					</v-alert>
 					<v-data-table
 						:headers="headers"
@@ -27,8 +36,15 @@
 								<v-spacer></v-spacer>
 								<v-dialog v-model="dialog" persistent max-width="900px">
 									<template v-slot:activator="{ on, attrs }">
-										<v-btn color="green darken-4" outlined class="mb-2" v-bind="attrs" v-on="on">
-											<v-icon>mdi-bus </v-icon>
+										<v-btn
+											color="green darken-4"
+											outlined
+											class="mb-2"
+											v-bind="attrs"
+											v-on="on"
+											@click="mostrarMensaje = false"
+										>
+											<v-icon>mdi-account-plus </v-icon>
 											Nuevo Bus
 										</v-btn>
 									</template>
@@ -36,6 +52,7 @@
 										<v-card-title>
 											<span class="headline">{{ formTitle }}</span>
 										</v-card-title>
+
 										<v-card-text>
 											<v-container>
 												<v-form ref="form" v-model="valid" lazy-validation>
@@ -43,7 +60,7 @@
 														<v-col cols="12" sm="6">
 															<v-text-field
 																v-model="objBus.patente"
-																:rules="patente"
+																:rules="patenteRules"
 																label="Patente"
 																required
 															></v-text-field>
@@ -55,10 +72,18 @@
 																item-text="nombre"
 																item-value="id"
 																label="Chofer"
-																data-vv-name="Chofer"
-																:rules="chofer"
-																required
+																persistent-hint
+																single-line
+																:rules="choferRules"
 															></v-select>
+														</v-col>
+
+														<v-col cols="12">
+															<v-checkbox
+																v-if="editedIndex >= 0"
+																v-model="objBus.disponible"
+																label="¿ Bus Disponible ?"
+															></v-checkbox>
 														</v-col>
 													</v-row>
 												</v-form>
@@ -71,12 +96,21 @@
 												Cancelar
 											</v-btn>
 											<v-btn
+												v-if="editedIndex < 0"
 												color="green darken-4"
 												:disabled="!valid"
 												outlined
-												@click="actualizarRegistro"
+												@click="guardarBus"
 											>
-												Guardar Cambios
+												Guardar Registro
+											</v-btn>
+											<v-btn
+												v-if="editedIndex >= 0"
+												color="orange darken-1"
+												:disabled="!valid"
+												outlined
+											>
+												Actualizar Registro
 											</v-btn>
 										</v-card-actions>
 									</v-card>
@@ -86,9 +120,6 @@
 						<template v-slot:[`item.actions`]="{ item }">
 							<v-icon small class="mr-2" @click="editItem(item)">
 								mdi-pencil
-							</v-icon>
-							<v-icon small @click="deleteItem(item)">
-								mdi-delete
 							</v-icon>
 						</template>
 						<template v-slot:no-data>
@@ -108,36 +139,34 @@ export default {
 	data: () => ({
 		/* Formulario - Campos y validaciones*/
 		valid: true,
-		patente: [
+		patenteRules: [
 			(v) => !!v || 'Campo Requerido',
-			(v) => (v && v.length < 10) || 'Campo no debe sobrepasar los 10 caracteres',
+			(v) => (v && v.length <= 10) || 'Campo no debe sobrepasar los 10 caracteres',
+			(v) => /^([A-Z]{2,5})-([0-9]{2,3})/.test(v) || 'Favor utilizar formato AAAA 00',
 		],
 
-		chofer: [(v) => !!v || 'Campo Requerido'],
+		choferRules: [(v) => !!v || 'Campo Requerido'],
 
-		/* Modals */
 		dialog: false,
 		dialogDelete: false,
-
-		/* Habilitado */
 		checkbox: true,
 
 		/* Mensajes y alertas */
 		mostrarMensaje: false,
+		cabecera: '',
 		tipo: '',
 		icono: '',
 		texto: '',
 
 		/* Data tables */
 		headers: [
-			{ text: 'Patente', value: 'run', align: 'start' },
-			{ text: 'Chofer Asignado', value: 'nombre' },
+			{ text: 'Patente', value: 'patente', align: 'start' },
+			{ text: 'Chofer Asignado', value: 'conductor' },
+			{ text: 'Disponible', value: 'habilitado' },
 			{ text: 'Actions', value: 'actions', sortable: false },
 		],
-
-		/* Arrays elementos a utilizar */
-		listadoChoferes: [],
 		listadoBuses: [],
+		listadoChoferes: [],
 
 		/* Index elemento seleccionado y/o flag para editar elemento */
 		editedIndex: -1,
@@ -148,11 +177,13 @@ export default {
 		objBus: {
 			patente: '',
 			chofer_asignado: '',
+			disponible: true,
 		},
 
 		defaultItem: {
 			patente: '',
 			chofer_asignado: '',
+			disponible: true,
 		},
 	}),
 
@@ -172,58 +203,103 @@ export default {
 	},
 
 	created() {
-		this.traeListadoChoferes();
-		this.traeBuses();
+		this.listarBuses();
+		this.listarChoferes();
 	},
 
 	methods: {
-		async traeListadoChoferes() {
-			let choferes = await axios.get('http://localhost:8000/api/choferes/');
-			choferes.status == 200
-				? (this.listadoChoferes = choferes.data)
-				: this.muestraMensajeError(
+		/* Funcion que lista todos los buses que estan registrados */
+		async listarBuses() {
+			let peticion = await axios.get('http://localhost:8000/api/buses/');
+			if (peticion.status == 200) {
+				let buses = peticion.data.map((bus) => ({
+					id: bus.id,
+					disponible: bus.disponible,
+					habilitado: bus.disponible ? 'SI' : 'NO',
+					patente: bus.patente,
+					chofer_asignado: bus.chofer_asignado,
+					conductor: bus.chofer_asignado.nombre + ' ' + bus.chofer_asignado.apellido,
+				}));
+
+				this.listadoBuses = buses;
+			} else {
+				this.muestraMensajeError(
+					'error',
+					'mdi-cloud-alert',
+					'Estimado Usuario, ha ocurrido un error al buscar el listado de elementos, favor intente más tarde',
+					'Error'
+				);
+			}
+		},
+
+		/*
+			Funcion que trae todos los choferes registrados que se encuentren habilitados
+			OBS: revisar porque no funciona el filter
+			OBS2: Se deja un try catch por si ocurre algun error en el ciclo
+		*/
+		async listarChoferes() {
+			try {
+				let peticion = await axios.get('http://localhost:8000/api/choferes/');
+				if (peticion.status == 200) {
+					peticion.data.forEach((chofer) => {
+						chofer.disponible ? this.listadoChoferes.push(chofer) : '';
+					});
+				} else {
+					this.muestraMensajeError(
 						'error',
 						'mdi-cloud-alert',
-						'Ha ocurrido un error al buscar el listado de los choferes'
-				  );
+						'Estimado Usuario, ha ocurrido un error favor comunicarse con el administrador',
+						'Error'
+					);
+				}
+			} catch (error) {
+				this.muestraMensajeError(
+					'error',
+					'mdi-cloud-alert',
+					'Estimado Usuario, ha ocurrido un error favor comunicarse con el administrador',
+					'Error'
+				);
+			}
 		},
 
-		muestraMensajeError(tipo, icono, texto) {
-			this.mostrarMensaje = true;
-			this.tipo = tipo;
-			this.icono = icono;
-			this.texto = texto;
-		},
-
-		async traeBuses() {
-			let buses = await axios.get('http://localhost:8000/api/buses/');
-			console.log('elemento almacenar', buses);
-			buses.status == 200
-				? (this.listadoBuses = buses.data)
-				: this.muestraMensajeError(
+		async guardarBus() {
+			if (this.$refs.form.validate()) {
+				let resultado = this.listadoBuses.find((bus) => bus.patente == this.objBus.patente);
+				let chofer = this.listadoChoferes.find(
+					(chofer) => chofer.id == this.objBus.chofer_asignado
+				);
+				if (resultado != undefined) {
+					this.muestraMensajeError(
 						'error',
 						'mdi-cloud-alert',
-						'Ha ocurrido un error al buscar el listado de los buses'
-				  );
+						'Estimado Usuario, se le informa que el registro ya se encuentra almacenado',
+						'Error'
+					);
+				} else {
+					let guardarRegisto = await axios.post('http://localhost:8000/api/buses/', this.objBus);
+					if (guardarRegisto.status == 201) {
+						this.actualizarChofer(chofer);
+						this.muestraMensajeError(
+							'success',
+							'mdi-check-all',
+							'Estimado Usuario, se le informa que el registro se ha almacenado correctamente',
+							'Correcto'
+						);
+					} else {
+						this.muestraMensajeError(
+							'error',
+							'mdi-cloud-alert',
+							'Estimado Usuario, se le informa que ha ocurrido un error al intentar almacenar el registro, favor intente nuevamente',
+							'Error'
+						);
+					}
+				}
+				this.close();
+			} else {
+				this.$refs.form.validate();
+			}
 		},
-
-		editItem(item) {
-			this.editedIndex = this.listadoBuses.indexOf(item);
-			this.objBus = Object.assign({}, item);
-			this.dialog = true;
-		},
-
-		deleteItem(item) {
-			this.editedIndex = this.listadoBuses.indexOf(item);
-			this.objBus = Object.assign({}, item);
-			this.dialogDelete = true;
-		},
-
-		deleteItemConfirm() {
-			this.listadoBuses.splice(this.editedIndex, 1);
-			this.closeDelete();
-		},
-
+		/* Funcion que cierra la ventana modal de las modificaciones / agregar */
 		close() {
 			this.dialog = false;
 			this.$nextTick(() => {
@@ -231,59 +307,28 @@ export default {
 				this.editedIndex = -1;
 			});
 			this.$refs.form.resetValidation();
-			this.traeBuses();
+			this.listarBuses();
 		},
 
-		closeDelete() {
-			this.dialogDelete = false;
-			this.$nextTick(() => {
-				this.objBus = Object.assign({}, this.defaultItem);
-				this.editedIndex = -1;
-			});
+		editItem(item) {
+			this.mostrarMensaje = false;
+			this.editedIndex = this.listadoBuses.indexOf(item);
+			this.objBus = Object.assign({}, item);
+			this.dialog = true;
 		},
 
-		async actualizarRegistro() {
-			/*
-				Funcion utilizada para guardar y actualizar los choferes
-				esta funcion se realizará dependiendo del campo iditedIndex
-			*/
-			try {
-				if (this.$refs.form.validate()) {
-					this.editedIndex > -1
-						? await axios.put('http://localhost:8000/api/choferes/', this.objBus)
-						: this.validaRegistrosRepetidos(this.objBus);
-					this.close();
-				} else {
-					this.$refs.form.validate();
-				}
-			} catch (error) {
-				this.muestraMensajeError(
-					'error',
-					'mdi-cloud-alert',
-					'Ha ocurrido un error, favor corroborar los datos ingresados'
-				);
-				this.close();
-			}
+		muestraMensajeError(tipo, icono, texto, cabecera) {
+			this.mostrarMensaje = true;
+			this.tipo = tipo;
+			this.icono = icono;
+			this.texto = texto;
+			this.cabecera = cabecera;
 		},
 
-		async validaRegistrosRepetidos(registroAlmacenar) {
-			const resultado = this.listadoBuses.find((bus) => bus.patente === registroAlmacenar.patente);
-			if (typeof resultado === 'undefined') {
-				let respuesta = await axios.post('http://localhost:8000/api/buses/', registroAlmacenar);
-				respuesta.status == 201
-					? this.muestraMensajeError('success', 'mdi-check-all', 'Se ha creado el registro')
-					: this.muestraMensajeError(
-							'error',
-							'mdi-cloud-alert',
-							'Ha ocurrido un error, favor intentar nuevamente'
-					  );
-			} else {
-				this.muestraMensajeError(
-					'error',
-					'mdi-cloud-alert',
-					'Patente ya se encuentra registrado en el sistema'
-				);
-			}
+		async actualizarChofer(obj) {
+			console.log((obj.disponible = false));
+
+			let actualizarRegisto = await axios.put(`http://localhost:8000/api/choferes/${obj.id}/`, obj);
 		},
 	},
 };

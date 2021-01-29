@@ -73,6 +73,7 @@
 																item-value="id"
 																label="Chofer"
 																persistent-hint
+																return-object
 																single-line
 																:rules="choferRules"
 															></v-select>
@@ -109,6 +110,7 @@
 												color="orange darken-1"
 												:disabled="!valid"
 												outlined
+												@click="actualizarBus"
 											>
 												Actualizar Registro
 											</v-btn>
@@ -215,7 +217,7 @@ export default {
 				let buses = peticion.data.map((bus) => ({
 					id: bus.id,
 					disponible: bus.disponible,
-					habilitado: bus.disponible ? 'SI' : 'NO',
+					habilitado: this.asignaEstado(bus),
 					patente: bus.patente,
 					chofer_asignado: bus.chofer_asignado,
 					conductor: bus.chofer_asignado.nombre + ' ' + bus.chofer_asignado.apellido,
@@ -234,24 +236,19 @@ export default {
 
 		/*
 			Funcion que trae todos los choferes registrados que se encuentren habilitados
-			OBS: revisar porque no funciona el filter
-			OBS2: Se deja un try catch por si ocurre algun error en el ciclo
+			OBS: Se deja un try catch por si ocurre algun error en el ciclo
 		*/
 		async listarChoferes() {
 			try {
 				let peticion = await axios.get('http://localhost:8000/api/choferes/');
-				if (peticion.status == 200) {
-					peticion.data.forEach((chofer) => {
-						chofer.disponible ? this.listadoChoferes.push(chofer) : '';
-					});
-				} else {
-					this.muestraMensajeError(
-						'error',
-						'mdi-cloud-alert',
-						'Estimado Usuario, ha ocurrido un error favor comunicarse con el administrador',
-						'Error'
-					);
-				}
+				peticion.status == 200
+					? (this.listadoChoferes = peticion.data.filter((chofer) => chofer.disponible == true))
+					: this.muestraMensajeError(
+							'error',
+							'mdi-cloud-alert',
+							'Estimado Usuario, ha ocurrido un error favor comunicarse con el administrador',
+							'Error'
+					  );
 			} catch (error) {
 				this.muestraMensajeError(
 					'error',
@@ -262,12 +259,14 @@ export default {
 			}
 		},
 
+		/*
+			Funcion que almacena registros de buses
+			OBS: Se deja un try catch por si ocurre algun error en el ciclo
+		*/
 		async guardarBus() {
 			if (this.$refs.form.validate()) {
 				let resultado = this.listadoBuses.find((bus) => bus.patente == this.objBus.patente);
-				let chofer = this.listadoChoferes.find(
-					(chofer) => chofer.id == this.objBus.chofer_asignado
-				);
+				this.objBus.chofer_asignado = this.objBus.chofer_asignado.id;
 				if (resultado != undefined) {
 					this.muestraMensajeError(
 						'error',
@@ -278,7 +277,6 @@ export default {
 				} else {
 					let guardarRegisto = await axios.post('http://localhost:8000/api/buses/', this.objBus);
 					if (guardarRegisto.status == 201) {
-						this.actualizarChofer(chofer);
 						this.muestraMensajeError(
 							'success',
 							'mdi-check-all',
@@ -325,10 +323,36 @@ export default {
 			this.cabecera = cabecera;
 		},
 
-		async actualizarChofer(obj) {
-			console.log((obj.disponible = false));
+		async actualizarBus() {
+			if (this.$refs.form.validate()) {
+				this.objBus.chofer_asignado = this.objBus.chofer_asignado.id;
+				let actualizarRegisto = await axios.put(
+					`http://localhost:8000/api/buses/${this.objBus.id}/`,
+					this.objBus
+				);
+				actualizarRegisto.status == 200
+					? this.muestraMensajeError(
+							'success',
+							'mdi-check-all',
+							'Estimado Usuario, se le informa que el registro se ha actualizado correctamente',
+							'Correcto'
+					  )
+					: this.muestraMensajeError(
+							'error',
+							'mdi-cloud-alert',
+							'Estimado Usuario, se le informa que ha ocurrido un error al intentar actualizar el registro, favor intente nuevamente',
+							'Error'
+					  );
+				this.close();
+			} else {
+				this.$refs.form.validate();
+			}
+		},
 
-			let actualizarRegisto = await axios.put(`http://localhost:8000/api/choferes/${obj.id}/`, obj);
+		asignaEstado(obj) {
+			let respuesta = obj.disponible ? 'SI' : 'NO';
+			respuesta = obj.chofer_asignado.disponible ? respuesta : 'Chofer no disponible';
+			return respuesta;
 		},
 	},
 };

@@ -3,20 +3,29 @@
 		<v-row no-gutters>
 			<v-col cols="12" md="12">
 				<v-card>
-					<v-alert
-						v-if="mostrarMensaje"
-						dismissible
-						text
-						prominent
-						:type="tipo"
-						:icon="icono"
-						border="left"
-					>
-						{{ texto }}
+					<v-alert v-if="mostrarMensaje" text prominent :type="tipo" :icon="icono" border="left">
+						<h3 class="headline">
+							{{ cabecera }}
+						</h3>
+						<div>
+							{{ texto }}
+						</div>
+
+						<v-divider class="my-4" :class="tipo" style="opacity: 0.22"></v-divider>
+
+						<v-row align="center" no-gutters>
+							<v-col class="grow"> </v-col>
+							<v-spacer></v-spacer>
+							<v-col class="shrink">
+								<v-btn :color="tipo" outlined @click="mostrarMensaje = !mostrarMensaje">
+									Entiendo
+								</v-btn>
+							</v-col>
+						</v-row>
 					</v-alert>
 					<v-data-table
 						:headers="headers"
-						:items="listadoChoferes"
+						:items="listadoTrayectos"
 						item-key="nombre"
 						class="elevation-25"
 					>
@@ -27,71 +36,170 @@
 								<v-spacer></v-spacer>
 								<v-dialog v-model="dialog" persistent max-width="900px">
 									<template v-slot:activator="{ on, attrs }">
-										<v-btn color="green darken-4" outlined class="mb-2" v-bind="attrs" v-on="on">
+										<v-btn
+											color="green darken-4"
+											outlined
+											class="mb-2"
+											v-bind="attrs"
+											v-on="on"
+											@click="mostrarMensaje = false"
+										>
 											<v-icon>mdi-account-plus </v-icon>
-											Nuevo Trayecto
+											Nuevo Bus
 										</v-btn>
 									</template>
 									<v-card>
 										<v-card-title>
 											<span class="headline">{{ formTitle }}</span>
 										</v-card-title>
+										<v-card-text v-if="editedIndex == -1">
+											<b>Instrucciones:</b> <br />Favor ingrese origen y destino. <br />Ingrese el
+											tiempo que estará disponible este recorrido (agregando fecha inicio y fecha
+											final)<br />Añada la periodicidad que saldran los buses en horas (Minimo 1
+											hr)<br />Una vez creado los registros, asigne los buses que realizarán los
+											viajes (editando el registro)</v-card-text
+										>
+										<v-card-text v-if="editedIndex != -1">
+											<b>Instrucciones:</b> <br />Solamente se puede editar los campos de Chofer y
+											si el destino se encuentra disponible (checkbox)<br />
+											Si se desactiva el viaje no aparecerá cuando se requiera comprar boletos al
+											igual si no se tiene chofer asignado
+
+											<br />
+											PD: Si se elimina el registro, eliminará todos los registros que coincidan con
+											Origen y Destino
+										</v-card-text>
 
 										<v-card-text>
 											<v-container>
 												<v-form ref="form" v-model="valid" lazy-validation>
 													<v-row>
-														<v-col cols="12" sm="6" md="4">
-															<v-text-field
-																v-model="objChofer.nombre"
-																:rules="nombreRules"
-																label="Nombre"
-																required
-															></v-text-field>
+														<v-col cols="12" sm="6" md="3" v-if="editedIndex == -1">
+															<v-select
+																v-model="objTrayecto.origen"
+																:items="listadoDestinos"
+																item-text="comuna.name"
+																item-value="comuna.name"
+																label="Origen"
+																persistent-hint
+																single-line
+																:rules="origen"
+															></v-select>
 														</v-col>
-														<v-col cols="12" sm="6" md="4">
+														<v-col cols="12" sm="6" md="3" v-if="editedIndex == -1">
+															<v-select
+																v-model="objTrayecto.destino"
+																:items="listadoDestinos"
+																item-text="comuna.name"
+																item-value="comuna.name"
+																label="Destino"
+																persistent-hint
+																single-line
+																:rules="destino"
+															></v-select>
+														</v-col>
+														<v-col cols="12" sm="6" md="3" v-if="editedIndex == -1">
+															<v-menu
+																v-model="menu"
+																:close-on-content-click="false"
+																:nudge-right="40"
+																transition="scale-transition"
+																offset-y
+																min-width="auto"
+															>
+																<template v-slot:activator="{ on, attrs }">
+																	<v-text-field
+																		v-model="objTrayecto.fecha_salida"
+																		label="Fecha Inicio Recorrido"
+																		prepend-icon="mdi-calendar"
+																		readonly
+																		v-bind="attrs"
+																		v-on="on"
+																	></v-text-field>
+																</template>
+																<v-date-picker
+																	locale="es-ES"
+																	:min="fecha_minimo_inicio"
+																	v-model="objTrayecto.fecha_salida"
+																	@input="menu2 = false"
+																></v-date-picker>
+															</v-menu>
+														</v-col>
+														<v-col cols="12" sm="6" md="3" v-if="editedIndex == -1">
+															<v-menu
+																v-model="menu2"
+																:close-on-content-click="false"
+																:nudge-right="40"
+																transition="scale-transition"
+																offset-y
+																min-width="auto"
+															>
+																<template v-slot:activator="{ on, attrs }">
+																	<v-text-field
+																		locale="es-ES"
+																		label="Fecha fin recorrido"
+																		prepend-icon="mdi-calendar"
+																		readonly
+																		v-bind="attrs"
+																		v-on="on"
+																		v-model="objTrayecto.fecha_llegada"
+																	></v-text-field>
+																</template>
+																<v-date-picker
+																	locale="es-ES"
+																	:min="cambiarFecha"
+																	v-model="objTrayecto.fecha_llegada"
+																	@input="menu2 = false"
+																></v-date-picker>
+															</v-menu>
+														</v-col>
+														<v-col cols="12" sm="6" md="3" v-if="editedIndex == -1">
 															<v-text-field
-																v-model="objChofer.apellido"
-																:rules="apellidoRules"
-																label="Apellido"
+																v-model="objTrayecto.precio"
+																:rules="precio"
+																label="Precio"
 																required
 															></v-text-field>
 														</v-col>
 
-														<v-col cols="12" sm="6" md="4">
+														<v-col cols="12" sm="6" md="3" v-if="editedIndex == -1">
 															<v-text-field
-																v-model="objChofer.run"
-																:rules="rutRules"
-																label="Rut"
+																v-model="objTrayecto.periodicidad"
+																:rules="periodicidad"
+																label="Periodicidad (hrs)"
 																required
 															></v-text-field>
 														</v-col>
 
-														<v-col cols="12" sm="6" md="4">
+														<v-col cols="12" sm="6" md="3" v-if="editedIndex == -1">
 															<v-text-field
-																v-model="objChofer.email"
-																:rules="emailRules"
-																label="Email"
+																v-model="objTrayecto.duracion"
+																:rules="duracion"
+																label="Duracion Aproximada (hrs)"
 																required
 															></v-text-field>
 														</v-col>
 
-														<v-col cols="12" sm="6" md="4">
-															<v-text-field
-																v-model="objChofer.direccion"
-																:rules="direccionRules"
-																label="Direccion"
-																required
-															></v-text-field>
+														<v-col cols="12" sm="6" md="3">
+															<v-select
+																v-model="objTrayecto.bus_asignado"
+																:items="listadoBuses"
+																item-text="patente"
+																item-value="id"
+																label="Bus Asignado"
+																persistent-hint
+																return-object
+																single-line
+																:rules="bus"
+															></v-select>
 														</v-col>
 
-														<v-col cols="12" sm="6" md="4">
-															<v-text-field
-																v-model="objChofer.telefono"
-																:rules="telefonoRules"
-																label="Telefono"
-																required
-															></v-text-field>
+														<v-col cols="12" sm="6">
+															<v-checkbox
+																v-if="editedIndex >= 0"
+																v-model="objTrayecto.disponible"
+																label="¿ Destino Disponible ?"
+															></v-checkbox>
 														</v-col>
 													</v-row>
 												</v-form>
@@ -104,13 +212,36 @@
 												Cancelar
 											</v-btn>
 											<v-btn
+												v-if="editedIndex < 0"
 												color="green darken-4"
 												:disabled="!valid"
 												outlined
-												@click="actualizarRegistro"
+												@click="guardarRegisto"
 											>
-												Guardar Cambios
+												Guardar Registro
 											</v-btn>
+											<v-btn
+												v-if="editedIndex >= 0"
+												color="orange darken-1"
+												:disabled="!valid"
+												outlined
+												@click="actualizarElemento"
+											>
+												Actualizar Registro
+											</v-btn>
+										</v-card-actions>
+									</v-card>
+								</v-dialog>
+								<v-dialog v-model="dialogDelete" max-width="500px">
+									<v-card>
+										<v-card-title class="headline"
+											>Are you sure you want to delete this item?</v-card-title
+										>
+										<v-card-actions>
+											<v-spacer></v-spacer>
+											<v-btn color="blue darken-1" text @click="closeDelete">Cancel</v-btn>
+											<v-btn color="blue darken-1" text @click="deleteItemConfirm">OK</v-btn>
+											<v-spacer></v-spacer>
 										</v-card-actions>
 									</v-card>
 								</v-dialog>
@@ -136,33 +267,28 @@
 
 <script>
 import axios from 'axios';
+import moment from 'moment';
 
 export default {
 	data: () => ({
+		menu: '',
+		menu2: '',
 		/* Formulario - Campos y validaciones*/
 		valid: true,
-		nombreRules: [
+		origen: [(v) => !!v || 'Campo Requerido'],
+		destino: [(v) => !!v || 'Campo Requerido'],
+		precio: [
 			(v) => !!v || 'Campo Requerido',
-			(v) => (v && v.length < 50) || 'Campo no debe sobrepasar los 50 caracteres',
+			(v) => /^[0-9]+$/.test(v) || 'Favor solo ingresar numeros',
 		],
-
-		apellidoRules: [
+		bus: [(v) => !!v || 'Campo Requerido'],
+		periodicidad: [
 			(v) => !!v || 'Campo Requerido',
-			(v) => (v && v.length < 50) || 'Campo no debe sobrepasar los 50 caracteres',
+			(v) => /^[0-9]+$/.test(v) || 'Favor solo ingresar numeros',
 		],
-		rutRules: [
+		duracion: [
 			(v) => !!v || 'Campo Requerido',
-			(v) => /^[0-9]+[-|‐]{1}[0-9kK]{1}$/.test(v) || 'Ingrese Rut sin punto y con guion',
-		],
-
-		emailRules: [
-			(v) => !!v || 'Campo Requerido',
-			(v) => /.+@.+\..+/.test(v) || 'Ingrese Email Valido',
-		],
-		direccionRules: [(v) => !!v || 'Campo Requerido'],
-		telefonoRules: [
-			(v) => !!v || 'Campo Requerido',
-			(v) => /^[0-9]+/.test(v) || 'Favor ingresar solo números',
+			(v) => /^[0-9]+$/.test(v) || 'Favor solo ingresar numeros',
 		],
 
 		dialog: false,
@@ -171,21 +297,26 @@ export default {
 
 		/* Mensajes y alertas */
 		mostrarMensaje: false,
+		cabecera: '',
 		tipo: '',
 		icono: '',
 		texto: '',
 
 		/* Data tables */
 		headers: [
-			{ text: 'Origen', value: 'run', align: 'start' },
-			{ text: 'Destino', value: 'nombre' },
-			{ text: 'Precio', value: 'apellido' },
-			{ text: 'Hora Salida', value: 'email' },
-			{ text: 'Hora Llegada', value: 'direccion' },
-			{ text: 'Bus Asingado', value: 'telefono' },
+			{ text: 'Origen', value: 'origen', align: 'start' },
+			{ text: 'Destino', value: 'destino', align: 'start' },
+			{ text: 'Fecha Salida', value: 'fecha_salida' },
+			{ text: 'Precio', value: 'precio' },
+			{ text: 'Bus asignado', value: 'bus_asignado.patente' },
+			{ text: 'Disponible', value: 'habilitado' },
 			{ text: 'Actions', value: 'actions', sortable: false },
 		],
-		listadoChoferes: [],
+
+		/* Listado de arreglos que almacenarán la informacion */
+		listadoDestinos: [],
+		listadoBuses: [],
+		listadoTrayectos: [],
 
 		/* Index elemento seleccionado y/o flag para editar elemento */
 		editedIndex: -1,
@@ -193,28 +324,41 @@ export default {
 		/* Objetos temporales y por defecto */
 		/* Se utilizan estos objs para almacenar los valores de los modals y/o asignar los valores correspondientes */
 
-		objChofer: {
-			run: '',
-			nombre: '',
-			apellido: '',
-			email: '',
-			direccion: '',
-			telefono: '',
+		fecha_minimo_inicio: '',
+		fecha_minimo_final: '',
+
+		objTrayecto: {
+			origen: '',
+			destino: '',
+			precio: 0,
+			fecha_salida: '',
+			fecha_llegada: '',
+			bus_asignado: '',
+			disponible: true,
+			periodicidad: '',
+			duracion: '',
 		},
 
 		defaultItem: {
-			run: '',
-			nombre: '',
-			apellido: '',
-			email: '',
-			direccion: '',
-			telefono: '',
+			origen: '',
+			destino: '',
+			precio: 0,
+			fecha_salida: '',
+			bus_asignado: '',
+			disponible: true,
+			periodicidad: '',
+			fecha_llegada: '',
 		},
 	}),
 
 	computed: {
 		formTitle() {
-			return this.editedIndex === -1 ? 'Nuevo Chofer' : 'Editar Chofer';
+			return this.editedIndex === -1 ? 'Nuevo Trayecto' : 'Editar Trayecto';
+		},
+
+		cambiarFecha() {
+			this.objTrayecto.fecha_llegada = this.objTrayecto.fecha_salida;
+			return (this.fecha_minimo_final = this.objTrayecto.fecha_salida);
 		},
 	},
 
@@ -228,106 +372,193 @@ export default {
 	},
 
 	created() {
-		this.traeListadoChoferes();
+		this.traeDestinos();
+		this.obtenerBuses();
+		this.traerTrayectos();
+		let fecha_actual = moment().format();
+		fecha_actual = moment(fecha_actual).add(1, 'day');
+		fecha_actual = moment(fecha_actual._d).format();
+		this.fecha_minimo_inicio = fecha_actual.substring(0, 10);
 	},
 
 	methods: {
-		async traeListadoChoferes() {
-			//this.listadoChoferes = [];
-			let choferes = await axios.get('http://localhost:8000/api/choferes/');
-			choferes.status == 200
-				? (this.listadoChoferes = choferes.data)
+		/* Funcion que obtiene las comunas en Chile para la reacion de rutas */
+		async traeDestinos() {
+			let peticion = await axios.get(
+				'https://private-anon-6dc34c8eee-gonzalobulnes.apiary-mock.com/comunas'
+			);
+
+			peticion.status == 200
+				? (this.listadoDestinos = peticion.data)
 				: this.muestraMensajeError(
 						'error',
 						'mdi-cloud-alert',
-						'Ha ocurrido un error al buscar el listado de los choferes'
+						'Estimado Usuario, se le informa que ha ocurrido un error al buscar las comunas, favor comunicarse con el administrador'
 				  );
 		},
 
-		muestraMensajeError(tipo, icono, texto) {
+		/* Funcion que cierra la ventana modal de las modificaciones / agregar */
+		close() {
+			this.dialog = false;
+			this.$nextTick(() => {
+				this.objTrayecto = Object.assign({}, this.defaultItem);
+				this.editedIndex = -1;
+			});
+			this.$refs.form.resetValidation();
+			this.traerTrayectos();
+		},
+
+		editItem(item) {
+			this.mostrarMensaje = false;
+			this.editedIndex = this.listadoTrayectos.indexOf(item);
+			this.objTrayecto = Object.assign({}, item);
+			this.dialog = true;
+		},
+
+		muestraMensajeError(tipo, icono, texto, cabecera) {
 			this.mostrarMensaje = true;
 			this.tipo = tipo;
 			this.icono = icono;
 			this.texto = texto;
+			this.cabecera = cabecera;
 		},
 
-		editItem(item) {
-			this.editedIndex = this.listadoChoferes.indexOf(item);
-			this.objChofer = Object.assign({}, item);
-			this.dialog = true;
+		async guardarRegisto() {
+			this.$refs.form.validate();
+
+			let desde = this.formateoFechas(this.objTrayecto.fecha_salida);
+			let hasta = this.formateoFechas(this.objTrayecto.fecha_llegada);
+			hasta.setHours(hasta.getHours() + 24);
+
+			while (desde < hasta) {
+				let obj = {
+					origen: this.objTrayecto.origen,
+					destino: this.objTrayecto.destino,
+					precio: this.objTrayecto.precio,
+					fecha_salida: desde,
+				};
+
+				let fecha_actual = moment().format();
+				fecha_actual = moment(desde).add(parseInt(this.objTrayecto.duracion), 'hours');
+				fecha_actual = moment(fecha_actual._d).format();
+				obj.fecha_llegada = fecha_actual.toString();
+
+				let peticion = await axios.post('http://localhost:8000/api/trayectos/', obj);
+				if (peticion.status != 201) {
+					this.muestraMensajeError(
+						'error',
+						'mdi-check-all',
+						'Estimado Usuario, se le informa que ha ocurrido un error mientras se agregaban los viajes, favor comunicarse con el administrador',
+						'Error'
+					);
+					break;
+				} else {
+					this.muestraMensajeError(
+						'success',
+						'mdi-check-all',
+						'Estimado Usuario, se han agregado los trayectos ingresados',
+						'Correcto'
+					);
+				}
+
+				desde.setHours(desde.getHours() + parseInt(this.objTrayecto.periodicidad));
+			}
+			this.close();
 		},
+
+		async obtenerBuses() {
+			let peticion = await axios.get('http://localhost:8000/api/buses/');
+			peticion.status == 200
+				? (this.listadoBuses = peticion.data.filter((bus) => bus.disponible == true))
+				: this.muestraMensajeError(
+						'error',
+						'mdi-cloud-alert',
+						'Estimado Usuario, se le informa que ha ocurrido un error, favor comunicarse con el administrador',
+						'Error'
+				  );
+		},
+
+		formateoFechas(fecha) {
+			let year = fecha.substring(0, 4);
+			let month = fecha.substring(5, 7);
+			let day = fecha.substring(8, 10);
+
+			let fecha_devuelta = new Date(year, month - 1, day);
+
+			return fecha_devuelta;
+		},
+
+		async traerTrayectos() {
+			let peticion = await axios.get('http://localhost:8000/api/trayectos/');
+			if (peticion.status == 200) {
+				this.listadoTrayectos = [];
+				let fecha_actual = moment().format();
+				peticion.data.forEach((trayecto) => {
+					if (fecha_actual < trayecto.fecha_salida) {
+						trayecto.habilitado = trayecto.disponible ? 'SI' : 'NO';
+						trayecto.fecha_salida =
+							trayecto.fecha_salida.substring(0, 10) +
+							' ' +
+							trayecto.fecha_salida.substring(11, 16);
+						this.listadoTrayectos.push(trayecto);
+					}
+				});
+			} else {
+				this.muestraMensajeError(
+					'error',
+					'mdi-cloud-alert',
+					'Estimado Usuario, se le informa que ha ocurrido un error, favor comunicarse con el administrador',
+					'Error'
+				);
+			}
+		},
+
+		eliminarRegistros() {},
 
 		deleteItem(item) {
-			this.editedIndex = this.listadoChoferes.indexOf(item);
-			this.objChofer = Object.assign({}, item);
+			this.editedIndex = this.listadoTrayectos.indexOf(item);
+			this.editedItem = Object.assign({}, item);
 			this.dialogDelete = true;
 		},
 
 		deleteItemConfirm() {
-			this.listadoChoferes.splice(this.editedIndex, 1);
+			this.listadoTrayectos.splice(this.editedIndex, 1);
 			this.closeDelete();
-		},
-
-		close() {
-			this.dialog = false;
-			this.$nextTick(() => {
-				this.objChofer = Object.assign({}, this.defaultItem);
-				this.editedIndex = -1;
-			});
-			this.$refs.form.resetValidation();
-			this.traeListadoChoferes();
 		},
 
 		closeDelete() {
 			this.dialogDelete = false;
 			this.$nextTick(() => {
-				this.objChofer = Object.assign({}, this.defaultItem);
+				this.editedItem = Object.assign({}, this.defaultItem);
 				this.editedIndex = -1;
 			});
 		},
 
-		async actualizarRegistro() {
-			/*
-				Funcion utilizada para guardar y actualizar los choferes
-				esta funcion se realizará dependiendo del campo iditedIndex
-			*/
-			try {
-				if (this.$refs.form.validate()) {
-					this.editedIndex > -1
-						? await axios.put('http://localhost:8000/api/choferes/', this.objChofer)
-						: this.validaRegistrosRepetidos(this.objChofer);
-					this.close();
-				} else {
-					this.$refs.form.validate();
-				}
-			} catch (error) {
-				this.muestraMensajeError(
-					'error',
-					'mdi-cloud-alert',
-					'Ha ocurrido un error, favor corroborar los datos ingresados'
+		async actualizarElemento() {
+			if (this.$refs.form.validate()) {
+				this.objTrayecto.bus_asignado = this.objTrayecto.bus_asignado.id;
+				let peticion = await axios.put(
+					`http://localhost:8000/api/trayectos/${this.objTrayecto.id}/`,
+					this.objTrayecto
 				);
-				this.close();
-			}
-		},
 
-		async validaRegistrosRepetidos(registroAlmacenar) {
-			const resultado = this.listadoChoferes.find((chofer) => chofer.run === registroAlmacenar.run);
-			if (typeof resultado === 'undefined') {
-				let respuesta = await axios.post('http://localhost:8000/api/choferes/', registroAlmacenar);
-
-				respuesta.status == 201
-					? this.muestraMensajeError('success', 'mdi-check-all', 'Se ha creado el registro')
+				peticion.status == 200
+					? this.muestraMensajeError(
+							'success',
+							'mdi-check-all',
+							'Estimado Usuario, se le informa que ha ocurrido un error, favor comunicarse con el administrador',
+							'Correcto'
+					  )
 					: this.muestraMensajeError(
 							'error',
 							'mdi-cloud-alert',
-							'Ha ocurrido un error, favor intentar nuevamente'
+							'Estimado Usuario, se le informa que ha ocurrido un error, favor comunicarse con el administrador',
+							'Error'
 					  );
+
+				this.close();
 			} else {
-				this.muestraMensajeError(
-					'error',
-					'mdi-cloud-alert',
-					'Run ya se encuentra registrado en el sistema'
-				);
+				this.$refs.form.validate();
 			}
 		},
 	},

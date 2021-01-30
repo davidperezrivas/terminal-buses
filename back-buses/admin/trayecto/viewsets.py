@@ -6,4 +6,3 @@ class TrayectoViewSet(viewsets.ModelViewSet):
 
     queryset = Trayecto.objects.all()
     serializer_class = TrayectoSerializer
-

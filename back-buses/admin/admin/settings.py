@@ -20,13 +20,12 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/3.1/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'ar_!#v0lmmen!usyo^=1y^la_jau$_9yuc!e@%^f7fizc+sw6r'
+SECRET_KEY = '#=o&2p!@cggt+y=ugkcft9k!!mag9^+m^pl#+m29$17n_u1+e+'
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
 ALLOWED_HOSTS = []
-
 CORS_ORIGIN_ALLOW_ALL = True
 CORS_ORIGIN_WHITELIST = [
     'http://localhost:8080',
@@ -87,7 +86,7 @@ WSGI_APPLICATION = 'admin.wsgi.application'
 # https://docs.djangoproject.com/en/3.1/ref/settings/#databases
 
 DATABASES = {
-    'default': {
+   'default': {
         'ENGINE': 'django.db.backends.mysql',
         'NAME': 'administracion',
         'USER': 'root',

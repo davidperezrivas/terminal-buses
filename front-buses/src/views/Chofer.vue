@@ -157,6 +157,14 @@
 						<template v-slot:no-data>
 							No se ha encontrado información
 						</template>
+						<template v-slot:[`item.disponible`]="{ item }">
+							<v-chip v-if="item.disponible" color="green darken-1" dark>
+								Chofer disponible
+							</v-chip>
+							<v-chip v-if="!item.disponible" color="deep-orange darken-1" dark>
+								Chofer no disponible
+							</v-chip>
+						</template>
 					</v-data-table>
 				</v-card>
 			</v-col>
@@ -192,7 +200,7 @@ export default {
 		direccionRules: [(v) => !!v || 'Campo Requerido'],
 		telefonoRules: [
 			(v) => !!v || 'Campo Requerido',
-			(v) => /^[0-9]+/.test(v) || 'Favor ingresar solo números',
+			(v) => /^[0-9]+$/.test(v) || 'Favor ingresar solo números',
 		],
 
 		dialog: false,
@@ -214,7 +222,7 @@ export default {
 			{ text: 'Email', value: 'email' },
 			{ text: 'Direccion', value: 'direccion' },
 			{ text: 'Telefono', value: 'telefono' },
-			{ text: 'Disponible', value: 'habilitado' },
+			{ text: 'Disponible', value: 'disponible' },
 			{ text: 'Actions', value: 'actions', sortable: false },
 		],
 		listadoChoferes: [],
@@ -269,20 +277,14 @@ export default {
 		/* Funcion que me trae de la api todos los choferes */
 		async traeListadoChoferes() {
 			let choferes = await axios.get('http://localhost:8000/api/choferes/');
-			if (choferes.status == 200) {
-				choferes.data.forEach((chofer) => {
-					chofer.disponible ? (chofer.habilitado = 'Si') : (chofer.habilitado = 'No');
-				});
-
-				this.listadoChoferes = choferes.data;
-			} else {
-				this.muestraMensajeError(
-					'error',
-					'mdi-cloud-alert',
-					'Estimado Usuario, ha ocurrido un error al buscar el listado de elementos, favor intente más tarde',
-					'Error'
-				);
-			}
+			choferes.status == 200
+				? (this.listadoChoferes = choferes.data)
+				: this.muestraMensaje(
+						'error',
+						'mdi-cloud-alert',
+						'Estimado Usuario, ha ocurrido un error al buscar el listado de elementos, favor intente más tarde',
+						'Error'
+				  );
 		},
 
 		/* Funcion que cierra la ventana modal de las modificaciones / agregar */
@@ -302,7 +304,7 @@ export default {
 				// Si el registro pasa validacion procederemos a revisar si el run se encuentra en los registros
 				const resultado = this.listadoChoferes.find((chofer) => chofer.run === this.objChofer.run);
 				if (resultado != undefined) {
-					this.muestraMensajeError(
+					this.muestraMensaje(
 						'error',
 						'mdi-cloud-alert',
 						'Estimado Usuario, se le informa que el registro ya se encuentra almacenado',
@@ -315,13 +317,13 @@ export default {
 					);
 
 					guardarRegisto.status == 201
-						? this.muestraMensajeError(
+						? this.muestraMensaje(
 								'success',
 								'mdi-check-all',
 								'Estimado Usuario, se le informa que el registro se ha almacenado correctamente',
 								'Correcto'
 						  )
-						: this.muestraMensajeError(
+						: this.muestraMensaje(
 								'error',
 								'mdi-cloud-alert',
 								'Estimado Usuario, se le informa que ha ocurrido un error al intentar almacenar el registro, favor intente nuevamente',
@@ -342,13 +344,13 @@ export default {
 					this.objChofer
 				);
 				actualizarRegisto.status == 200
-					? this.muestraMensajeError(
+					? this.muestraMensaje(
 							'success',
 							'mdi-check-all',
 							'Estimado Usuario, se le informa que el registro se ha actualizado correctamente',
 							'Correcto'
 					  )
-					: this.muestraMensajeError(
+					: this.muestraMensaje(
 							'error',
 							'mdi-cloud-alert',
 							'Estimado Usuario, se le informa que ha ocurrido un error al intentar actualizar el registro, favor intente nuevamente',
@@ -367,7 +369,7 @@ export default {
 			this.dialog = true;
 		},
 
-		muestraMensajeError(tipo, icono, texto, cabecera) {
+		muestraMensaje(tipo, icono, texto, cabecera) {
 			this.mostrarMensaje = true;
 			this.tipo = tipo;
 			this.icono = icono;

@@ -45,7 +45,7 @@
 											@click="mostrarMensaje = false"
 										>
 											<v-icon>mdi-account-plus </v-icon>
-											Nuevo Bus
+											Nuevo Trayecto
 										</v-btn>
 									</template>
 									<v-card>
@@ -180,7 +180,7 @@
 															></v-text-field>
 														</v-col>
 
-														<v-col cols="12" sm="6" md="3">
+														<v-col cols="12" sm="6" md="3" v-if="editedIndex != -1">
 															<v-select
 																v-model="objTrayecto.bus_asignado"
 																:items="listadoBuses"
@@ -258,6 +258,32 @@
 						<template v-slot:no-data>
 							No se ha encontrado información
 						</template>
+						<template v-slot:[`item.fecha_salida`]="{ item }">
+							<v-chip color="green darken-1" dark>
+								{{ item.fecha_salida }}
+							</v-chip>
+						</template>
+						<template v-slot:[`item.fecha_llegada`]="{ item }">
+							<v-chip color="blue darken-1" dark>
+								{{ item.fecha_llegada }}
+							</v-chip>
+						</template>
+						<template v-slot:[`item.bus_asignado.patente`]="{ item }">
+							<v-chip v-if="item.bus_asignado" color="green darken-1" dark>
+								{{ item.bus_asignado.patente }}
+							</v-chip>
+							<v-chip v-if="!item.bus_asignado" color="red darken-1" dark>
+								Favor Asignar un bus
+							</v-chip>
+						</template>
+						<template v-slot:[`item.disponible`]="{ item }">
+							<v-chip v-if="item.disponible" color="green darken-1" dark>
+								Trayecto Disponible
+							</v-chip>
+							<v-chip v-if="!item.disponible" color="red darken-1" dark>
+								Trayecto deshabilitado
+							</v-chip>
+						</template>
 					</v-data-table>
 				</v-card>
 			</v-col>
@@ -307,9 +333,10 @@ export default {
 			{ text: 'Origen', value: 'origen', align: 'start' },
 			{ text: 'Destino', value: 'destino', align: 'start' },
 			{ text: 'Fecha Salida', value: 'fecha_salida' },
+			{ text: 'Fecha llegada', value: 'fecha_llegada' },
 			{ text: 'Precio', value: 'precio' },
 			{ text: 'Bus asignado', value: 'bus_asignado.patente' },
-			{ text: 'Disponible', value: 'habilitado' },
+			{ text: 'Disponible', value: 'disponible' },
 			{ text: 'Actions', value: 'actions', sortable: false },
 		],
 
@@ -390,7 +417,7 @@ export default {
 
 			peticion.status == 200
 				? (this.listadoDestinos = peticion.data)
-				: this.muestraMensajeError(
+				: this.muestraMensaje(
 						'error',
 						'mdi-cloud-alert',
 						'Estimado Usuario, se le informa que ha ocurrido un error al buscar las comunas, favor comunicarse con el administrador'
@@ -415,7 +442,7 @@ export default {
 			this.dialog = true;
 		},
 
-		muestraMensajeError(tipo, icono, texto, cabecera) {
+		muestraMensaje(tipo, icono, texto, cabecera) {
 			this.mostrarMensaje = true;
 			this.tipo = tipo;
 			this.icono = icono;
@@ -424,53 +451,66 @@ export default {
 		},
 
 		async guardarRegisto() {
-			this.$refs.form.validate();
+			/*
+				Funcion para almacenar un set de recorridos donde el flujo es el siguiente
+				1° Se añanden 23 hrs a la fecha final con la finalidad de darme el ultimo recorrido posible (ya que estos se manejan por hora)
+				2° Comparar que la fecha - hora inicio sea menor a la final si es así sigue el proceso
+				3° Aumento x cantidad de horas
+			*/
+			try {
+				if (this.$refs.form.validate()) {
+					let fecha_inicio_recorrido = moment(this.objTrayecto.fecha_salida);
+					let fecha_fin_recorrido = moment(this.objTrayecto.fecha_llegada);
+					fecha_fin_recorrido = fecha_fin_recorrido.add(23, 'hours');
 
-			let desde = this.formateoFechas(this.objTrayecto.fecha_salida);
-			let hasta = this.formateoFechas(this.objTrayecto.fecha_llegada);
-			hasta.setHours(hasta.getHours() + 24);
+					while (fecha_inicio_recorrido.format() <= fecha_fin_recorrido.format()) {
+						let fecha_llegada = moment(fecha_inicio_recorrido.format());
+						fecha_llegada.add(parseInt(this.objTrayecto.duracion), 'hours');
 
-			while (desde < hasta) {
-				let obj = {
-					origen: this.objTrayecto.origen,
-					destino: this.objTrayecto.destino,
-					precio: this.objTrayecto.precio,
-					fecha_salida: desde,
-				};
+						let obj = {
+							fecha_salida: this.formateoFechas(fecha_inicio_recorrido.format()),
+							fecha_llegada: this.formateoFechas(fecha_llegada.format()),
+							origen: this.objTrayecto.origen,
+							destino: this.objTrayecto.destino,
+							precio: this.objTrayecto.precio,
+						};
+						let peticion = await axios.post('http://localhost:8000/api/trayectos/', obj);
+						if (peticion.status != 201) {
+							throw new Error('Error !');
+							break;
+						} else {
+							this.muestraMensaje(
+								'success',
+								'mdi-check-all',
+								'Estimado Usuario, se han agregado los trayectos ingresados',
+								'Correcto'
+							);
+						}
+						fecha_inicio_recorrido = fecha_inicio_recorrido.add(
+							parseInt(this.objTrayecto.periodicidad),
+							'hours'
+						);
+					}
 
-				let fecha_actual = moment().format();
-				fecha_actual = moment(desde).add(parseInt(this.objTrayecto.duracion), 'hours');
-				fecha_actual = moment(fecha_actual._d).format();
-				obj.fecha_llegada = fecha_actual.toString();
-
-				let peticion = await axios.post('http://localhost:8000/api/trayectos/', obj);
-				if (peticion.status != 201) {
-					this.muestraMensajeError(
-						'error',
-						'mdi-check-all',
-						'Estimado Usuario, se le informa que ha ocurrido un error mientras se agregaban los viajes, favor comunicarse con el administrador',
-						'Error'
-					);
-					break;
+					this.close();
 				} else {
-					this.muestraMensajeError(
-						'success',
-						'mdi-check-all',
-						'Estimado Usuario, se han agregado los trayectos ingresados',
-						'Correcto'
-					);
+					this.$refs.form.validate();
 				}
-
-				desde.setHours(desde.getHours() + parseInt(this.objTrayecto.periodicidad));
+			} catch (error) {
+				this.muestraMensaje(
+					'error',
+					'mdi-cloud-alert',
+					'Estimado Usuario, se le informa que ha ocurrido un error, favor comunicarse con el administrador',
+					'Error'
+				);
 			}
-			this.close();
 		},
 
 		async obtenerBuses() {
 			let peticion = await axios.get('http://localhost:8000/api/buses/');
 			peticion.status == 200
 				? (this.listadoBuses = peticion.data.filter((bus) => bus.disponible == true))
-				: this.muestraMensajeError(
+				: this.muestraMensaje(
 						'error',
 						'mdi-cloud-alert',
 						'Estimado Usuario, se le informa que ha ocurrido un error, favor comunicarse con el administrador',
@@ -479,13 +519,10 @@ export default {
 		},
 
 		formateoFechas(fecha) {
-			let year = fecha.substring(0, 4);
-			let month = fecha.substring(5, 7);
-			let day = fecha.substring(8, 10);
-
-			let fecha_devuelta = new Date(year, month - 1, day);
-
-			return fecha_devuelta;
+			let dia = fecha.toString().substring(0, 10);
+			let hora = fecha.toString().substring(11, 19);
+			let formato = dia + ' ' + hora;
+			return formato;
 		},
 
 		async traerTrayectos() {
@@ -495,7 +532,6 @@ export default {
 				let fecha_actual = moment().format();
 				peticion.data.forEach((trayecto) => {
 					if (fecha_actual < trayecto.fecha_salida) {
-						trayecto.habilitado = trayecto.disponible ? 'SI' : 'NO';
 						trayecto.fecha_salida =
 							trayecto.fecha_salida.substring(0, 10) +
 							' ' +
@@ -503,8 +539,9 @@ export default {
 						this.listadoTrayectos.push(trayecto);
 					}
 				});
+				console.log(this.listadoTrayectos);
 			} else {
-				this.muestraMensajeError(
+				this.muestraMensaje(
 					'error',
 					'mdi-cloud-alert',
 					'Estimado Usuario, se le informa que ha ocurrido un error, favor comunicarse con el administrador',
@@ -543,13 +580,13 @@ export default {
 				);
 
 				peticion.status == 200
-					? this.muestraMensajeError(
+					? this.muestraMensaje(
 							'success',
 							'mdi-check-all',
 							'Estimado Usuario, se le informa que ha ocurrido un error, favor comunicarse con el administrador',
 							'Correcto'
 					  )
-					: this.muestraMensajeError(
+					: this.muestraMensaje(
 							'error',
 							'mdi-cloud-alert',
 							'Estimado Usuario, se le informa que ha ocurrido un error, favor comunicarse con el administrador',

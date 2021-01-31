@@ -127,6 +127,18 @@
 						<template v-slot:no-data>
 							No se ha encontrado información
 						</template>
+						<template v-slot:[`item.disponible`]="{ item }">
+							<v-chip v-if="item.disponible" color="green darken-1" dark>
+								Bus disponible
+							</v-chip>
+							<v-chip v-if="!item.disponible" color="deep-orange darken-1" dark>
+								Bus no disponible
+							</v-chip>
+
+							<v-chip v-if="!item.chofer_asignado.disponible" color="deep-orange darken-1" dark>
+								Conductor no disponible
+							</v-chip>
+						</template>
 					</v-data-table>
 				</v-card>
 			</v-col>
@@ -164,7 +176,7 @@ export default {
 		headers: [
 			{ text: 'Patente', value: 'patente', align: 'start' },
 			{ text: 'Chofer Asignado', value: 'conductor' },
-			{ text: 'Disponible', value: 'habilitado' },
+			{ text: 'Disponible', value: 'disponible' },
 			{ text: 'Actions', value: 'actions', sortable: false },
 		],
 		listadoBuses: [],
@@ -213,17 +225,13 @@ export default {
 		/* Funcion que lista todos los buses que estan registrados */
 		async listarBuses() {
 			let peticion = await axios.get('http://localhost:8000/api/buses/');
-			if (peticion.status == 200) {
-				let buses = peticion.data.map((bus) => ({
-					id: bus.id,
-					disponible: bus.disponible,
-					habilitado: this.asignaEstado(bus),
-					patente: bus.patente,
-					chofer_asignado: bus.chofer_asignado,
-					conductor: bus.chofer_asignado.nombre + ' ' + bus.chofer_asignado.apellido,
-				}));
 
-				this.listadoBuses = buses;
+			if (peticion.status == 200) {
+				this.listadoBuses = [];
+				peticion.data.forEach((bus) => {
+					bus.conductor = bus.chofer_asignado.nombre + ' ' + bus.chofer_asignado.apellido;
+					this.listadoBuses.push(bus);
+				});
 			} else {
 				this.muestraMensajeError(
 					'error',
@@ -347,12 +355,6 @@ export default {
 			} else {
 				this.$refs.form.validate();
 			}
-		},
-
-		asignaEstado(obj) {
-			let respuesta = obj.disponible ? 'SI' : 'NO';
-			respuesta = obj.chofer_asignado.disponible ? respuesta : 'Chofer no disponible';
-			return respuesta;
 		},
 	},
 };

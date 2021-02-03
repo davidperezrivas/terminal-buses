@@ -337,6 +337,7 @@ export default {
 			{ text: 'Precio', value: 'precio' },
 			{ text: 'Bus asignado', value: 'bus_asignado.patente' },
 			{ text: 'Disponible', value: 'disponible' },
+			{ text: 'Porcentaje Ocupacion', value: 'porcentaje' },
 			{ text: 'Actions', value: 'actions', sortable: false },
 		],
 
@@ -344,6 +345,7 @@ export default {
 		listadoDestinos: [],
 		listadoBuses: [],
 		listadoTrayectos: [],
+		listadoViejes: [],
 
 		/* Index elemento seleccionado y/o flag para editar elemento */
 		editedIndex: -1,
@@ -399,6 +401,8 @@ export default {
 	},
 
 	created() {
+		this.traePorcentajeOcupacionTrayecto();
+
 		this.traeDestinos();
 		this.obtenerBuses();
 		this.traerTrayectos();
@@ -529,16 +533,13 @@ export default {
 			let peticion = await axios.get('http://localhost:8000/api/trayectos/');
 			if (peticion.status == 200) {
 				this.listadoTrayectos = [];
-				let fecha_actual = moment().format();
+				let fecha_actual = moment().format('YYYY-MM-DD HH:mm:ss');
 				peticion.data.forEach((trayecto) => {
-					if (fecha_actual < trayecto.fecha_salida) {
-						trayecto.fecha_salida =
-							trayecto.fecha_salida.substring(0, 10) +
-							' ' +
-							trayecto.fecha_salida.substring(11, 16);
-						this.listadoTrayectos.push(trayecto);
-					}
+					let encontrado = this.listadoViejes.find((viaje) => viaje.id == trayecto.id);
+					trayecto.porcentaje = encontrado == undefined ? 0 : encontrado.cantidad * 10;
+					this.listadoTrayectos.push(trayecto);
 				});
+				this.listadoTrayectos.sort((a, b) => (a.fecha_salida > b.fecha_salida ? 1 : -1));
 			} else {
 				this.muestraMensaje(
 					'error',
@@ -619,6 +620,22 @@ export default {
 			} else {
 				this.$refs.form.validate();
 			}
+		},
+
+		async traePorcentajeOcupacionTrayecto() {
+			let peticion = await axios.get('http://localhost:8000/api/viajes/');
+
+			let arreglo = [];
+			peticion.data.forEach((viaje) => {
+				let encontrado = arreglo.find((elemento) => elemento.id == viaje.trayecto.id);
+				if (encontrado == undefined) {
+					arreglo.push({ id: viaje.trayecto.id, cantidad: 1 });
+				} else {
+					encontrado.cantidad++;
+				}
+			});
+
+			this.listadoViejes = arreglo;
 		},
 	},
 };

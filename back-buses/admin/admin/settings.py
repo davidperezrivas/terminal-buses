@@ -88,10 +88,10 @@ WSGI_APPLICATION = 'admin.wsgi.application'
 DATABASES = {
    'default': {
         'ENGINE': 'django.db.backends.mysql',
-        'NAME': 'administracion',
-        'USER': 'root',
-        'PASSWORD': 'davidAntonioPerezRivas.123654',
-        'HOST': 'localhost',
+        'NAME': 'cel68392_marino',
+        'USER': 'cel68392_cel68392',
+        'PASSWORD': 'SEVkCRYRJxKyLPxLOJhD',
+        'HOST': 'elmarinocl.cl',
         'PORT': '3306'
 
 

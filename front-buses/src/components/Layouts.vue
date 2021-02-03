@@ -41,11 +41,12 @@ export default {
 
 	data: () => ({
 		items: [
+			{ title: 'Administracion', icon: 'mdi-account', url: '/administracion' },
 			{ title: 'Mantenedor Pasajeros', icon: 'mdi-account', url: '/pasajeros' },
 			{ title: 'Mantenedor Buses', icon: 'mdi-bus', url: '/buses' },
 			{ title: 'Mantenedor Trayectos', icon: 'mdi-wallet-travel', url: '/trayectos' },
 			{ title: 'Mantenedor Chofer', icon: 'mdi-odnoklassniki', url: '/chofer' },
-			{ title: 'Viajes', icon: 'mdi-wallet', url: '/viajes' },
+			{ title: 'Viajes', icon: 'mdi-wallet', url: '/' },
 		],
 		drawer: false,
 	}),

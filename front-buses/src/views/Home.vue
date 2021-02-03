@@ -162,11 +162,11 @@
 									</v-form>
 								</v-container>
 							</v-card>
-
+							<!-- Boton habilitado  -->
 							<v-btn v-if="!pasaSteps1" color="green darken-1" outlined @click="buscaTrayectos()">
 								Continuar
 							</v-btn>
-
+							<!-- Boton deshabilitad -->
 							<v-btn v-if="pasaSteps1" color="green darken-1" outlined disabled>
 								Continuar
 							</v-btn>
@@ -205,7 +205,7 @@
 								</v-list>
 							</v-card>
 
-							<v-btn color="red darken-1" outlined>
+							<v-btn color="red darken-1" outlined @click="volverStep(2)">
 								Volver
 							</v-btn>
 						</v-stepper-content>
@@ -243,11 +243,7 @@
 								</v-list>
 							</v-card>
 
-							<v-btn color="green darken-1" outlined @click="steps = 4">
-								Continuar
-							</v-btn>
-
-							<v-btn color="red darken-1" outlined>
+							<v-btn color="red darken-1" outlined @click="volverStep(3)">
 								Volver
 							</v-btn>
 						</v-stepper-content>
@@ -257,9 +253,14 @@
 						<v-stepper-content step="4">
 							<v-card class="mb-12">
 								<v-row>
-									<v-col v-for="n in 10" :key="n" cols="12" md="4">
-										<v-btn class="ma-2" color="info">
-											{{ n }}
+									<v-col v-for="viaje in viajeIda" :key="viaje.numero" cols="12" md="4">
+										<v-btn
+											class="ma-2"
+											:color="viaje.color"
+											:disabled="viaje.disabled"
+											@click="almacenarAsientosIda(viaje)"
+										>
+											{{ viaje.numero }}
 											<v-icon dark right>
 												mdi-sofa
 											</v-icon>
@@ -268,11 +269,25 @@
 								</v-row>
 							</v-card>
 
-							<v-btn color="green darken-1" outlined @click="steps = 5">
+							<v-btn
+								color="green darken-1"
+								outlined
+								v-if="this.objViaje.asientosSeleccionadosIda.length != this.objViaje.num_pasajes"
+								disabled
+							>
 								Continuar
 							</v-btn>
 
-							<v-btn color="red darken-1" outlined>
+							<v-btn
+								v-if="this.objViaje.asientosSeleccionadosIda.length == this.objViaje.num_pasajes"
+								color="green darken-1"
+								outlined
+								@click="steps = 5"
+							>
+								Continuar
+							</v-btn>
+
+							<v-btn color="red darken-1" outlined @click="volverStep(4)">
 								Volver
 							</v-btn>
 						</v-stepper-content>
@@ -282,9 +297,14 @@
 						<v-stepper-content step="5">
 							<v-card class="mb-12">
 								<v-row>
-									<v-col v-for="n in 10" :key="n" cols="12" md="4">
-										<v-btn class="ma-2" color="info" disabled>
-											{{ n }}
+									<v-col v-for="viaje in viajeVuelta" :key="viaje.numero" cols="12" md="4">
+										<v-btn
+											class="ma-2"
+											:color="viaje.color"
+											:disabled="viaje.disabled"
+											@click="almacenarAsientosVuelta(viaje)"
+										>
+											{{ viaje.numero }}
 											<v-icon dark right>
 												mdi-sofa
 											</v-icon>
@@ -293,11 +313,25 @@
 								</v-row>
 							</v-card>
 
-							<v-btn color="green darken-1" outlined @click="steps = 6">
+							<v-btn
+								color="green darken-1"
+								outlined
+								v-if="this.objViaje.asientosSeleccionadosVuelta.length != this.objViaje.num_pasajes"
+								disabled
+							>
 								Continuar
 							</v-btn>
 
-							<v-btn color="red darken-1" outlined>
+							<v-btn
+								v-if="this.objViaje.asientosSeleccionadosVuelta.length == this.objViaje.num_pasajes"
+								color="green darken-1"
+								outlined
+								@click="steps = 6"
+							>
+								Continuar
+							</v-btn>
+
+							<v-btn color="red darken-1" outlined @click="volverStep(5)">
 								Volver
 							</v-btn>
 						</v-stepper-content>
@@ -305,13 +339,58 @@
 						<!-- Etapa 6 - 7  -->
 
 						<v-stepper-content step="6">
-							<v-card class="mb-12"></v-card>
+							<v-card class="mb-12">
+								<v-form ref="form" lazy-validation>
+									<v-row>
+										<v-col cols="12" sm="3">
+											<v-text-field
+												label="Nombre"
+												required
+												v-model="objViaje.usuario.nombre"
+												:rules="objRules.nombreRules"
+											></v-text-field>
+										</v-col>
+										<v-col cols="12" sm="3">
+											<v-text-field
+												label="Apellido"
+												v-model="objViaje.usuario.apellido"
+												:rules="objRules.apellidoRules"
+												required
+											></v-text-field>
+										</v-col>
+										<v-col cols="12" sm="3">
+											<v-text-field
+												label="run"
+												v-model="objViaje.usuario.run"
+												:rules="objRules.rutRules"
+												required
+											></v-text-field>
+										</v-col>
+										<v-col cols="12" sm="3">
+											<v-text-field
+												label="Email"
+												v-model="objViaje.usuario.email"
+												:rules="objRules.emailRules"
+												required
+											></v-text-field>
+										</v-col>
+										<v-col cols="12" sm="3">
+											<v-text-field
+												label="Telefono"
+												v-model="objViaje.usuario.telefono"
+												:rules="objRules.telefonoRules"
+												required
+											></v-text-field>
+										</v-col>
+									</v-row>
+								</v-form>
+							</v-card>
 
-							<v-btn color="green darken-1" outlined @click="steps = 7">
+							<v-btn color="green darken-1" outlined @click="almacenaOBuscaUsuario()">
 								Continuar
 							</v-btn>
 
-							<v-btn color="red darken-1" outlined>
+							<v-btn color="red darken-1" outlined @click="volverStep(6)">
 								Volver
 							</v-btn>
 						</v-stepper-content>
@@ -319,9 +398,9 @@
 						<!-- Etapa 7 - 7  -->
 
 						<v-stepper-content step="7">
-							<v-card class="mb-12"></v-card>
+							<v-card class="mb-12"> El monto a pagar es de {{ totalViaje }} </v-card>
 
-							<v-btn color="green darken-1" outlined>
+							<v-btn color="green darken-1" outlined @click="realizarPago()">
 								Pagar
 							</v-btn>
 
@@ -357,8 +436,34 @@ export default {
 		trayectosVuelta: [],
 		viajesAlmacenados: [],
 
+		totalViaje: 0,
+
 		viajeIda: [],
 		viajeVuelta: [],
+
+		objRules: {
+			nombreRules: [
+				(v) => !!v || 'Campo Requerido',
+				(v) => (v && v.length < 50) || 'Campo no debe sobrepasar los 50 caracteres',
+			],
+			apellidoRules: [
+				(v) => !!v || 'Campo Requerido',
+				(v) => (v && v.length < 50) || 'Campo no debe sobrepasar los 50 caracteres',
+			],
+			rutRules: [
+				(v) => !!v || 'Campo Requerido',
+				(v) => /^[0-9]+[-|‐]{1}[0-9kK]{1}$/.test(v) || 'Ingrese Rut sin punto y con guion',
+			],
+
+			emailRules: [
+				(v) => !!v || 'Campo Requerido',
+				(v) => /.+@.+\..+/.test(v) || 'Ingrese Email Valido',
+			],
+			telefonoRules: [
+				(v) => !!v || 'Campo Requerido',
+				(v) => /^[0-9]+$/.test(v) || 'Favor ingresar solo números',
+			],
+		},
 
 		asientos: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
 		objViaje: {
@@ -367,6 +472,16 @@ export default {
 			num_pasajes: '',
 			fecha_salida: '',
 			fecha_regreso: '',
+			asientosSeleccionadosIda: [],
+			asientosSeleccionadosVuelta: [],
+			usuario: {
+				id: '',
+				nombre: '',
+				apellido: '',
+				run: '',
+				telefono: '',
+				email: '',
+			},
 		},
 		ciudades: [],
 	}),
@@ -482,15 +597,42 @@ export default {
 		},
 
 		añadirTrayectoOrigen(trayecto) {
+			console.log(trayecto);
+
+			this.objViaje.trayectoIda = trayecto.id;
 			this.steps = 3;
-			this.viajeIda = this.viajesAlmacenados.filter((viaje) => viaje.trayecto_id == trayecto.id);
-			console.log(viajeIda);
+			this.viajeIda = [];
+
+			let viajes = this.viajesAlmacenados
+				.filter((viaje) => viaje.trayecto.id == trayecto.id)
+				.map((viaje) => viaje.num_asiento);
+
+			for (let index = 1; index <= 10; index++) {
+				let obj = {
+					numero: index,
+					disabled: viajes.indexOf(index) > -1 && viajes.length != 0 ? true : false,
+					color: 'info',
+				};
+				console.log(obj);
+				this.viajeIda.push(obj);
+			}
 		},
 
 		añadirTrayectoRegreso(trayecto) {
+			this.objViaje.trayectoRegreso = trayecto.id;
 			this.steps = 4;
-			this.viajeVuelta = this.viajesAlmacenados.filter((viaje) => viaje.trayecto_id == trayecto.id);
-			console.log(this.viajeVuelta);
+			let viajes = this.viajesAlmacenados
+				.filter((viaje) => viaje.trayecto == trayecto.id)
+				.map((viaje) => viaje.num_asiento);
+			this.viajeVuelta = [];
+			for (let index = 1; index <= 10; index++) {
+				let obj = {
+					numero: index,
+					disabled: viajes.indexOf(index) > -1 ? true : false,
+					color: 'info',
+				};
+				this.viajeVuelta.push(obj);
+			}
 		},
 
 		async traeViajes() {
@@ -508,6 +650,153 @@ export default {
 					'Estimado Usuario, se le informa que ha ocurrido un error: ' + error.message,
 					'Error'
 				);
+			}
+		},
+
+		almacenarAsientosIda(viaje) {
+			if (this.objViaje.asientosSeleccionadosIda.length < this.objViaje.num_pasajes) {
+				this.objViaje.asientosSeleccionadosIda.push(viaje.numero);
+
+				this.viajeIda.forEach((viajeIda) => {
+					if (viajeIda.numero == viaje.numero) {
+						viaje.color = 'warning';
+					}
+				});
+			} else {
+				this.muestraMensaje(
+					'error',
+					'mdi-cloud-alert',
+					'Estimado Usuario ya ha seleccionado los asientos solicitados',
+					'Error'
+				);
+			}
+		},
+
+		almacenarAsientosVuelta(viaje) {
+			if (this.objViaje.asientosSeleccionadosVuelta.length < this.objViaje.num_pasajes) {
+				this.objViaje.asientosSeleccionadosVuelta.push(viaje.numero);
+
+				this.viajeVuelta.forEach((viajeVuelta) => {
+					if (viajeVuelta.numero == viaje.numero) {
+						viaje.color = 'warning';
+					}
+				});
+			} else {
+				this.muestraMensaje(
+					'error',
+					'mdi-cloud-alert',
+					'Estimado Usuario ya ha seleccionado los asientos solicitados',
+					'Error'
+				);
+			}
+		},
+
+		volverStep(num) {
+			if (num == 4) {
+				this.viajeIda.forEach((viaje) => (viaje.color = 'info'));
+				this.objViaje.asientosSeleccionadosIda = [];
+			}
+
+			if (num == 5) {
+				this.viajeVuelta.forEach((viaje) => (viaje.color = 'info'));
+				this.objViaje.asientosSeleccionadosVuelta = [];
+			}
+
+			this.steps = num - 1;
+		},
+
+		async almacenaOBuscaUsuario() {
+			try {
+				this.calcularTotalAPagar();
+				if (this.$refs.form.validate()) {
+					let peticion = await axios.get('http://localhost:8000/api/pasajeros/');
+					if (peticion.status == 200) {
+						let pasajeros = peticion.data;
+
+						let pasajeroEncontrado = pasajeros.find(
+							(pasajero) => pasajero.run == this.objViaje.usuario.run
+						);
+
+						if (pasajeroEncontrado == undefined) {
+							let peticion = await axios.post(
+								'http://localhost:8000/api/pasajeros/',
+								this.objViaje.usuario
+							);
+							if (peticion.status == 201) {
+								this.objViaje.usuario.id = peticion.data.id;
+							}
+						} else {
+							this.objViaje.usuario.id = pasajeroEncontrado.id;
+							if (!this.validaValoresPasajeros(pasajeroEncontrado)) {
+								await axios.put(
+									`http://localhost:8000/api/pasajeros/${pasajeroEncontrado.id}/`,
+									this.objViaje.usuario
+								);
+							}
+						}
+					}
+					this.steps = 7;
+				} else {
+					this.$refs.form.validate();
+				}
+			} catch (error) {
+				console.log(error);
+			}
+		},
+
+		validaValoresPasajeros(encontrado) {
+			let run = this.objViaje.usuario.run;
+			let nombre = this.objViaje.usuario.nombre;
+			let apellido = this.objViaje.usuario.apellido;
+			let email = this.objViaje.usuario.email;
+			let telefono = this.objViaje.usuario.telefono;
+
+			if (
+				encontrado.run == run &&
+				encontrado.nombre == nombre &&
+				encontrado.apellido == apellido &&
+				encontrado.email == email &&
+				encontrado.telefono == telefono
+			) {
+				return true;
+			}
+
+			return false;
+		},
+
+		async calcularTotalAPagar() {
+			let peticionIda = await axios.get(
+				`http://localhost:8000/api/trayectos/${this.objViaje.trayectoIda}/`
+			);
+			let peticionVuelta = await axios.get(
+				`http://localhost:8000/api/trayectos/${this.objViaje.trayectoRegreso}/`
+			);
+			let precioIda = peticionIda.data.precio * this.objViaje.num_pasajes;
+			let precioVuelta = peticionVuelta.data.precio * this.objViaje.num_pasajes;
+
+			this.totalViaje = precioIda + precioVuelta;
+		},
+
+		async realizarPago() {
+			for (let index = 0; index < this.objViaje.asientosSeleccionadosIda.length; index++) {
+				let asientoIda = this.objViaje.asientosSeleccionadosIda[index];
+				let asientoRegreso = this.objViaje.asientosSeleccionadosVuelta[index];
+
+				let objIda = {
+					pasajero: this.objViaje.usuario.id,
+					trayecto: this.objViaje.trayectoIda,
+					num_asiento: asientoIda,
+				};
+
+				let objRegreso = {
+					pasajero: this.objViaje.usuario.id,
+					trayecto: this.objViaje.trayectoRegreso,
+					num_asiento: asientoRegreso,
+				};
+
+				await axios.post('http://localhost:8000/api/viajes/', objIda);
+
+				await axios.post('http://localhost:8000/api/viajes/', objRegreso);
 			}
 		},
 	},

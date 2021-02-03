@@ -315,7 +315,7 @@ export default {
 						'http://localhost:8000/api/choferes/',
 						this.objChofer
 					);
-
+					console.log(guardarRegisto);
 					guardarRegisto.status == 201
 						? this.muestraMensaje(
 								'success',

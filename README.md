@@ -21,7 +21,7 @@ b). Añadir o modificar el elemento CORS_ORIGIN_WHITELIST encontrado en la parte
 
 3.- La elaboracion del back está construída con Python, versión 3.8.
 
-4.- Instalar las dependencias del back con el comando "pip install -r requirements.txt". Para ejecutarlo, se necesita previamente estar posicionado en la carpeta "admin", que se encuentra en la ruta "terminal-buses/back-buses/admin".
+4.- Instalar las dependencias del back con el comando "pip install -r requirements.txt". Para ejecutarlo, se necesita previamente estar posicionado en la carpeta "admin", que se encuentra en la ruta "terminal-buses/back-buses/admin". (se recomienda el uso de entornos virtuales)
 
 5.- Instalar las dependencias del front con el comando "npm i". Para ejecutarlo, se necesita previamente estar posicionado en la carpeta "front-buses", que se encuentra en la raiz del proyecto.
 
